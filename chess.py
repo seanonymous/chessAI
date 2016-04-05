@@ -24,7 +24,8 @@ pieceArr = [[0 for x in range(0, 8)] for x in range(0, 8)]
 pieceObjs = []
 drawnMoves = []
 
-win = GraphWin("Chess", width, height)
+if __name__ == '__main__':
+    win = GraphWin("Chess", width, height)
 
 def main():
     win.setBackground("tan2")
@@ -105,7 +106,7 @@ def main():
             if __name__ == '__main__':
                 multiprocessing.freeze_support()
                 parent_conn, child_conn = Pipe()
-                p = Process(target=beginDecision, args=(pieceArr, avalMovesC,))
+                p = Process(target=beginDecision, args=(pieceArr, avalMovesC, parent_conn))
                 p.start()
                 # try:
                 #     print("Waiting 10 seconds")
@@ -117,11 +118,13 @@ def main():
                 #     p.join()
                 # print("done")
                 p.join()
-                move = output.get()
-            # print(parent_conn.recv()[0])
-            # move = parent_conn.recv()[0]
-            # move = beginDecision(pieceArr, avalMovesC)
-            movePiece(pieceArr, move.getPiece(), move.getX(), move.getY())
+                print("lmao")
+                x = parent_conn.recv()
+                print(type(x))
+
+                move = parent_conn.recv()
+                move = beginDecision(pieceArr, avalMovesC)
+                movePiece(pieceArr, move.getPiece(), move.getX(), move.getY())
 
             clearBoard()
             renderPieces(win, pieceArr)
@@ -134,8 +137,7 @@ def main():
     win.close()
 
 
-def beginDecision(arr, avalMoves):
-    print("enetered")
+def beginDecision(arr, avalMoves, conn):
     move = None
     highest = -1000
     time = 1
@@ -167,7 +169,8 @@ def beginDecision(arr, avalMoves):
 
     # max = newNode(arr, 3, -100000, 1000000, 1)
     print("finished")
-    output.put(move)
+    conn.send(4)
+    conn.close()
     # return move
 
 
@@ -938,5 +941,5 @@ class Move():
 
 
 
-
-main()
+if __name__ == '__main__':
+    main()

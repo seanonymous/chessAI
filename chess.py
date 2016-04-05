@@ -4,11 +4,12 @@ from graphics import *
 from random import randint
 import math
 import copy
-import threading
 import time
 import os
-from threading import Timer, Thread
+import multiprocessing
+from multiprocessing import Process, Pipe
 
+output = multiprocessing.Queue()
 width = 1000
 height = 800
 smaller = height
@@ -100,9 +101,26 @@ def main():
                     print("STALEMATE")
                 return
 
-
-
-            move = beginDecision(pieceArr, avalMovesC)
+            # New process
+            if __name__ == '__main__':
+                multiprocessing.freeze_support()
+                parent_conn, child_conn = Pipe()
+                p = Process(target=beginDecision, args=(pieceArr, avalMovesC,))
+                p.start()
+                # try:
+                #     print("Waiting 10 seconds")
+                #     time.sleep(10)
+                #
+                # except KeyboardInterrupt:
+                #     print("Caught KeyboardInterrupt, terminating workers")
+                #     p.terminate()
+                #     p.join()
+                # print("done")
+                p.join()
+                move = output.get()
+            # print(parent_conn.recv()[0])
+            # move = parent_conn.recv()[0]
+            # move = beginDecision(pieceArr, avalMovesC)
             movePiece(pieceArr, move.getPiece(), move.getX(), move.getY())
 
             clearBoard()
@@ -115,65 +133,10 @@ def main():
 
     win.close()
 
-    import time
-    from threading import Thread
-
-    def sleeper(i):
-        print
-        "thread %d sleeps for 5 seconds" % i
-        time.sleep(5)
-        print
-        "thread %d woke up" % i
-
-    for i in range(10):
-        t = Thread(target=sleeper, args=(i,))
-        t.start()
-
-
-def sleeper(i):
-    print("thread %d sleeps for 5 seconds" % i)
-    time.sleep(5)
-    print("thread %d woke up" % i)
-
-for i in range(10):
-    t = Thread(target=sleeper, args=(i,))
-    t.start()
-
-# def outOfTime():
-#     global time
-#     time = 0
-#     global t
-#     # print("Timer hit")
-#
-# class perpetualTimer():
-#
-#     def __init__(self, t, hFunction):
-#         self.t = t
-#         self.hFunction = hFunction
-#         self.thread = Timer(self.t, self.handle_function)
-#
-#     def handle_function(self):
-#         self.hFunction()
-#         self.thread = Timer(self.t, self.handle_function)
-#         self.thread.start()
-#
-#     def start(self):
-#         self.thread.start()
-#
-#     def cancel(self):
-#         self.thread.cancel()
-#
-# def printer():
-#     print('ipsem lorem')
-#
-# t = perpetualTimer(10, outOfTime)
-# t.start()
-
 
 def beginDecision(arr, avalMoves):
+    print("enetered")
     move = None
-    global time
-    global t
     highest = -1000
     time = 1
 
@@ -190,7 +153,7 @@ def beginDecision(arr, avalMoves):
         # renderPieces(win, newArr)
 
         # print("Begining calculations for piece: " + i.getInfo())
-        calcValue = newNode(newArr, 2, -100000, 100000, -1)
+        calcValue = newNode(newArr, 1, -100000, 100000, -1)
         # print("End calc" + str(calcValue))
         if highest < calcValue:
             # print("Found better move")
@@ -203,8 +166,9 @@ def beginDecision(arr, avalMoves):
 
 
     # max = newNode(arr, 3, -100000, 1000000, 1)
-
-    return move
+    print("finished")
+    output.put(move)
+    # return move
 
 
 def newNode(arr, depth, a, b, player):
@@ -212,8 +176,6 @@ def newNode(arr, depth, a, b, player):
     # win.getMouse()
 
     avalPieces = getPiecesAval(arr, player)
-    global time
-    #  or time == 0
 
     if depth == 0 or len(avalPieces) == 0:
         board = getBoardState(arr)

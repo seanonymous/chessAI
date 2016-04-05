@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from graphics import *
 from random import randint
 import math
@@ -5,13 +7,13 @@ import copy
 import threading
 import time
 import os
+from threading import Timer, Thread
 
 width = 1000
 height = 800
 smaller = height
 offset = 5
 offsetInner = 5
-time = 1
 images = 0
 
 boxLength = (height - offset) / 8
@@ -113,38 +115,60 @@ def main():
 
     win.close()
 
-def outOfTime():
-    global time
-    time = 0
-    global t
-    #print("Timer hit")
+    import time
+    from threading import Thread
 
-from threading import Timer,Thread,Event
+    def sleeper(i):
+        print
+        "thread %d sleeps for 5 seconds" % i
+        time.sleep(5)
+        print
+        "thread %d woke up" % i
+
+    for i in range(10):
+        t = Thread(target=sleeper, args=(i,))
+        t.start()
 
 
-class perpetualTimer():
+def sleeper(i):
+    print("thread %d sleeps for 5 seconds" % i)
+    time.sleep(5)
+    print("thread %d woke up" % i)
 
-   def __init__(self,t,hFunction):
-      self.t=t
-      self.hFunction = hFunction
-      self.thread = Timer(self.t,self.handle_function)
+for i in range(10):
+    t = Thread(target=sleeper, args=(i,))
+    t.start()
 
-   def handle_function(self):
-      self.hFunction()
-      self.thread = Timer(self.t,self.handle_function)
-      self.thread.start()
+# def outOfTime():
+#     global time
+#     time = 0
+#     global t
+#     # print("Timer hit")
+#
+# class perpetualTimer():
+#
+#     def __init__(self, t, hFunction):
+#         self.t = t
+#         self.hFunction = hFunction
+#         self.thread = Timer(self.t, self.handle_function)
+#
+#     def handle_function(self):
+#         self.hFunction()
+#         self.thread = Timer(self.t, self.handle_function)
+#         self.thread.start()
+#
+#     def start(self):
+#         self.thread.start()
+#
+#     def cancel(self):
+#         self.thread.cancel()
+#
+# def printer():
+#     print('ipsem lorem')
+#
+# t = perpetualTimer(10, outOfTime)
+# t.start()
 
-   def start(self):
-      self.thread.start()
-
-   def cancel(self):
-      self.thread.cancel()
-
-def printer():
-    print('ipsem lorem')
-
-t = perpetualTimer(10, outOfTime)
-t.start()
 
 def beginDecision(arr, avalMoves):
     move = None
@@ -181,8 +205,6 @@ def beginDecision(arr, avalMoves):
     # max = newNode(arr, 3, -100000, 1000000, 1)
 
     return move
-
-
 
 
 def newNode(arr, depth, a, b, player):
@@ -275,6 +297,7 @@ def getBoardState(arr):
             elif pVal == 6 or pVal == 12:
                 temp += (neg * 1000)
     return temp
+
 
 def getPiecesAval(arr, player):
     piecesAval = []
@@ -577,6 +600,7 @@ def getMoves(arr, piece):
 
     return avalMoves
 
+
 def getSafeMoves(arr, player):
     piecesAval = getPiecesAval(pieceArr, player)
     avalMoves = []
@@ -588,6 +612,7 @@ def getSafeMoves(arr, player):
                 avalMoves.append(Move(k, g.getX(), g.getY()))
     return avalMoves
 
+
 def getSafeMovesPiece(arr, piece, player):
     avalMoves = []
 
@@ -597,12 +622,14 @@ def getSafeMovesPiece(arr, piece, player):
             avalMoves.append(Move(piece, g.getX(), g.getY()))
     return avalMoves
 
+
 def checkThreat(arr, p, i, j, player):
     oneMoveArr = copy.deepcopy(arr)
     movePiece(oneMoveArr, p, i, j)
 
     check = checkCheck(oneMoveArr, player)
     return check
+
 
 def checkCheck(arr, player):
     avalMoves = []
@@ -799,7 +826,6 @@ def checkCheck(arr, player):
     return 0
 
 
-
 def getColor(arr, i, j):
     piece = arr[i][j]
     if piece == 0:
@@ -820,6 +846,7 @@ def clearBoard():
     for i in pieceObjs:
         i.undraw()
         del i
+
 
 def renderPieces(w, arr):
     for i in range(0, 8):
@@ -867,6 +894,7 @@ def renderPieces(w, arr):
                     newPiece.draw(w)
                     pieceObjs.append(newPiece)
 
+
 def startPos(i, j):
     if j == 1:
         return 7
@@ -899,9 +927,9 @@ def startPos(i, j):
 
     return 0
 
+
 def getPiece(i, j):
     return pieceArr[i][j]
-
 
 
 
@@ -924,6 +952,10 @@ class Piece():
     def getInfo(self):
         return "I am piece: " + str(self.p) + ", located at: " + str(self.x) + ", " + str(self.y)
 
+
+
+
+
 class Move():
     def __init__(self, p, x, y):
         self.p = p
@@ -941,6 +973,8 @@ class Move():
 
     def getInfo(self):
         return "I am a move: " + str(self.p.getInfo()) + ", moving to: " + str(self.x), ", " + str(self.y)
+
+
 
 
 main()

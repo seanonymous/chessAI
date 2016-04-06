@@ -8,8 +8,10 @@ import time
 import os
 import multiprocessing
 from multiprocessing import Process, Pipe
+from copy import deepcopy
+import numpy as np
+from numpy import *
 
-output = multiprocessing.Queue()
 width = 1000
 height = 800
 smaller = height
@@ -22,6 +24,7 @@ boxLength = (height - offset) / 8
 
 
 pieceArr = [[0 for x in range(0, 8)] for x in range(0, 8)]
+#pieceArr = np.zeros((8, 8), dtype=np.int16)
 pieceObjs = []
 drawnMoves = []
 
@@ -154,7 +157,7 @@ def beginDecision(arr, avalMoves):
     for j in avalMoves:
         # for g in range(1, 10):
         # win.getMouse()
-        newArr = copy.deepcopy(arr)
+        newArr = deepcopy(arr)
         movePiece(newArr, j.getPiece(), j.getX(), j.getY())
 
         # clearBoard()
@@ -163,7 +166,7 @@ def beginDecision(arr, avalMoves):
         # print("Begining calculations for piece: " + i.getInfo())
 
         calcValue = newNode(newArr, 0, -100000, 100000, -1)
-        sortMove(valueList, ValueMove(copy.deepcopy(j), calcValue))
+        sortMove(valueList, ValueMove(deepcopy(j), calcValue))
         # print("End calc" + str(calcValue))
         if highest < calcValue:
             # print("Found better move")
@@ -172,17 +175,17 @@ def beginDecision(arr, avalMoves):
             highest = calcValue
 
     newValueArr = []
-    for i in range(1, 4):
+    for i in range(1, 3):
         highest = -1000
         if i != 1:
-            valueList = copy.deepcopy(newValueArr)
+            valueList = deepcopy(newValueArr)
             del newValueArr[:]
         for j in valueList:
             #for g in range(1, 10):
             # win.getMouse()
             print(i)
             m = j.getMove()
-            newArr = copy.deepcopy(arr)
+            newArr = deepcopy(arr)
             movePiece(newArr, m.getPiece(), m.getX(), m.getY())
 
             # clearBoard()
@@ -191,7 +194,7 @@ def beginDecision(arr, avalMoves):
             # print("Begining calculations for piece: " + i.getInfo())
 
             calcValue = newNode(newArr, i, -100000, 100000, -1)
-            sortMove(newValueArr, ValueMove(copy.deepcopy(m), calcValue))
+            sortMove(newValueArr, ValueMove(deepcopy(m), calcValue))
             # print("End calc" + str(calcValue))
             if highest < calcValue:
                 # print("Found better move")
@@ -395,7 +398,7 @@ def getMoves(arr, piece):
         # print("yoy")
         for k in range(1, pawnStart):
             if (k * neg) + j > 7 or (k * neg) + j < 0:
-                break
+                continue
             if arr[i][j + (k * neg)] == 0:
                 avalMoves.append(Point(i, j + (k * neg)))
             else:
@@ -408,7 +411,7 @@ def getMoves(arr, piece):
                 flip = -1
 
             if (1 * neg) + j > 7 or (1 * neg) + j < 0 or (1 * flip) + i > 7 or (1 * flip) + i < 0:
-                break
+                continue
             pColor = getColor(arr, i + (1 * flip), j + (1 * neg))
             if neg != pColor and pColor != 0:
                 avalMoves.append(Point(i + (1 * flip), j + (1 * neg)))
@@ -661,10 +664,14 @@ def getSafeMovesPiece(arr, piece, player):
 
 
 def checkThreat(arr, p, i, j, player):
-    oneMoveArr = copy.deepcopy(arr)
-    movePiece(oneMoveArr, p, i, j)
+    oldPiece = movePiece(arr, p, i, j)
+    tempx = p.getX()
+    tempy = p.getY()
 
-    check = checkCheck(oneMoveArr, player)
+    check = checkCheck(arr, player)
+    movePiece(arr, Piece(i, j, p.getP()), tempx, tempy)
+    if not oldPiece == None:
+        arr[oldPiece.getX()][oldPiece.getY()] = oldPiece.getP()
     return check
 
 
@@ -764,7 +771,7 @@ def checkCheck(arr, player):
 
             if searchPiece == 2 or searchPiece == 5 or searchPiece == 8 or searchPiece == 11:
                 return 1
-            elif (searchPiece == 6 or searchPiece == 12) and flip == neg and h == 1:
+            elif (searchPiece == 6 or searchPiece == 12) and h == 1:
                 return 1
             else:
                 break
@@ -791,7 +798,7 @@ def checkCheck(arr, player):
 
             if searchPiece == 2 or searchPiece == 5 or searchPiece == 8 or searchPiece == 11:
                 return 1
-            elif (searchPiece == 6 or searchPiece == 12) and flip == neg and k == 1:
+            elif (searchPiece == 6 or searchPiece == 12) and k == 1:
                 return 1
             else:
                 break

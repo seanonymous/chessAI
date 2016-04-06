@@ -1,18 +1,22 @@
+#!/usr/bin/python
+
 from graphics import *
 from random import randint
 import math
 import copy
-import threading
 import time
 import os
+import multiprocessing
+from multiprocessing import Process, Pipe
 
+output = multiprocessing.Queue()
 width = 1000
 height = 800
 smaller = height
 offset = 5
 offsetInner = 5
-time = 1
 images = 0
+nodeCount = 0
 
 boxLength = (height - offset) / 8
 
@@ -21,7 +25,8 @@ pieceArr = [[0 for x in range(0, 8)] for x in range(0, 8)]
 pieceObjs = []
 drawnMoves = []
 
-win = GraphWin("Chess", width, height)
+if __name__ == '__main__':
+    win = GraphWin("Chess", width, height)
 
 def main():
     win.setBackground("tan2")
@@ -98,7 +103,27 @@ def main():
                     print("STALEMATE")
                 return
 
-
+            # New process
+            # if __name__ == '__main__':
+            #     multiprocessing.freeze_support()
+            #     parent_conn, child_conn = Pipe()
+            #     p = Process(target=beginDecision, args=(pieceArr, avalMovesC, child_conn))
+            #     p.start()
+            #
+            #     # try:
+            #     #     print("Waiting 10 seconds")
+            #     #     time.sleep(10)
+            #     #
+            #     # except KeyboardInterrupt:
+            #     #     print("Caught KeyboardInterrupt, terminating workers")
+            #     #     p.terminate()
+            #     #     p.join()
+            #     # print("done")
+            #
+            #     p.join()
+            #
+            #     move = parent_conn.recv()
+            #     movePiece(pieceArr, move.getPiece(), move.getX(), move.getY())
 
             move = beginDecision(pieceArr, avalMovesC)
             movePiece(pieceArr, move.getPiece(), move.getX(), move.getY())
@@ -113,51 +138,21 @@ def main():
 
     win.close()
 
-def outOfTime():
-    global time
-    time = 0
-    global t
-    #print("Timer hit")
-
-from threading import Timer,Thread,Event
-
-
-class perpetualTimer():
-
-   def __init__(self,t,hFunction):
-      self.t=t
-      self.hFunction = hFunction
-      self.thread = Timer(self.t,self.handle_function)
-
-   def handle_function(self):
-      self.hFunction()
-      self.thread = Timer(self.t,self.handle_function)
-      self.thread.start()
-
-   def start(self):
-      self.thread.start()
-
-   def cancel(self):
-      self.thread.cancel()
-
-def printer():
-    print('ipsem lorem')
-
-t = perpetualTimer(10, outOfTime)
-t.start()
 
 def beginDecision(arr, avalMoves):
     move = None
-    global time
-    global t
     highest = -1000
     time = 1
 
     if len(avalMoves) == 0:
         print("this should literally never happen")
         return
+    global nodeCount
+    nodeCount = 0
+
+    valueList = []
     for j in avalMoves:
-        #for g in range(1, 10):
+        # for g in range(1, 10):
         # win.getMouse()
         newArr = copy.deepcopy(arr)
         movePiece(newArr, j.getPiece(), j.getX(), j.getY())
@@ -166,7 +161,9 @@ def beginDecision(arr, avalMoves):
         # renderPieces(win, newArr)
 
         # print("Begining calculations for piece: " + i.getInfo())
-        calcValue = newNode(newArr, 2, -100000, 100000, -1)
+
+        calcValue = newNode(newArr, 0, -100000, 100000, -1)
+        sortMove(valueList, ValueMove(copy.deepcopy(j), calcValue))
         # print("End calc" + str(calcValue))
         if highest < calcValue:
             # print("Found better move")
@@ -174,70 +171,129 @@ def beginDecision(arr, avalMoves):
             move = j
             highest = calcValue
 
+    newValueArr = []
+    for i in range(1, 4):
+        highest = -1000
+        if i != 1:
+            valueList = copy.deepcopy(newValueArr)
+            del newValueArr[:]
+        for j in valueList:
+            #for g in range(1, 10):
+            # win.getMouse()
+            print(i)
+            m = j.getMove()
+            newArr = copy.deepcopy(arr)
+            movePiece(newArr, m.getPiece(), m.getX(), m.getY())
+
+            # clearBoard()
+            # renderPieces(win, newArr)
+
+            # print("Begining calculations for piece: " + i.getInfo())
+
+            calcValue = newNode(newArr, i, -100000, 100000, -1)
+            sortMove(newValueArr, ValueMove(copy.deepcopy(m), calcValue))
+            # print("End calc" + str(calcValue))
+            if highest < calcValue:
+                # print("Found better move")
+                # move = Move(Piece(j.getP().getX(), j.getP().getY(), j.getP().getP()), j.getX(), j.getY())
+                move = m
+                highest = calcValue
+
     if move == None:
         move = avalMoves[0]
-
+    print(nodeCount)
 
     # max = newNode(arr, 3, -100000, 1000000, 1)
-
+    # conn.send(move)
+    # conn.close()
     return move
-
-
 
 
 def newNode(arr, depth, a, b, player):
     # eval board state
     # win.getMouse()
+    global nodeCount
+    nodeCount += 1
+    global win
 
-    avalPieces = getPiecesAval(arr, player)
-    global time
-    #  or time == 0
-
-    if depth == 0 or len(avalPieces) == 0:
+    if depth == 0:
         board = getBoardState(arr)
         # print(board)
         return board
 
     if player == 1:
         v = -100000
-        for i in avalPieces:
-            avalMoves = getMoves(arr, i)
-            if avalMoves == -10 or len(avalMoves) == 0:
-                continue
-            for j in avalMoves:
-                newArr = copy.deepcopy(arr)
-                movePiece(newArr, i, j.getX(), j.getY())
+        avalMoves = getSafeMoves(arr, player)
+        if len(avalMoves) == 0:
+            board = getBoardState(arr)
+            # print(board)
+            return board
+        for j in avalMoves:
+            # newArr = copy.deepcopy(arr)
+            # movePiece(newArr, j.getPiece(), j.getX(), j.getY())
 
-                # clearBoard()
-                # renderPieces(win, newArr)
+            oldPiece = movePiece(arr, j.getPiece(), j.getX(), j.getY())
 
-                v = max(v, newNode(newArr, depth - 1, a, b, -1))
-                a = max(a, v)
-                if b <= a:
-                    break
+            tempx = j.getPiece().getX()
+            tempy = j.getPiece().getY()
+
+            # clearBoard()
+            # renderPieces(win, arr)
+
+            v = max(v, newNode(arr, depth - 1, a, b, -1))
+            movePiece(arr, Piece(j.getX(), j.getY(), j.getPiece().getP()), tempx, tempy)
+            if not oldPiece == None:
+                arr[oldPiece.getX()][oldPiece.getY()] = oldPiece.getP()
+
+            a = max(a, v)
+            if b <= a:
+                break
         return v
 
     else:
         v = 100000
-        for i in avalPieces:
-            avalMoves = getMoves(arr, i)
-            if avalMoves == -10 or len(avalMoves) == 0:
-                continue
-            for j in avalMoves:
-                newArr = copy.deepcopy(arr)
-                movePiece(newArr, i, j.getX(), j.getY())
+        avalMoves = getSafeMoves(arr, player)
+        if avalMoves == -10 or len(avalMoves) == 0:
+            board = getBoardState(arr)
+            # print(board)
+            return board
+        for j in avalMoves:
+            # newArr = copy.deepcopy(arr)
+            # movePiece(newArr, j.getPiece(), j.getX(), j.getY())
 
-                # clearBoard()
-                # renderPieces(win, newArr)
+            oldPiece = movePiece(arr, j.getPiece(), j.getX(), j.getY())
 
-                v = min(v, newNode(newArr, depth - 1, a, b, 1))
-                b = min(b, v)
-                if b <= a:
-                    break
+            tempx = j.getPiece().getX()
+            tempy = j.getPiece().getY()
+
+            # clearBoard()
+            # renderPieces(win, arr)
+
+            v = min(v, newNode(arr, depth - 1, a, b, 1))
+            movePiece(arr, Piece(j.getX(), j.getY(), j.getPiece().getP()), tempx, tempy)
+            if not oldPiece == None:
+                arr[oldPiece.getX()][oldPiece.getY()] = oldPiece.getP()
+
+            b = min(b, v)
+            if b <= a:
+                break
         return v
 
 
     # move
+
+
+def sortMove(valarr, newMove):
+    if len(valarr) == 0:
+        valarr.append(newMove)
+    else:
+        newval = newMove.getValue()
+        for i in range(0, len(valarr)):
+            if i == len(valarr) -1:
+                valarr.insert(i, newMove)
+            elif valarr[i].getValue() < newval:
+                valarr.insert(i, newMove)
+                return
 
 
 def getBoardState(arr):
@@ -276,6 +332,7 @@ def getBoardState(arr):
                 temp += (neg * 1000)
     return temp
 
+
 def getPiecesAval(arr, player):
     piecesAval = []
 
@@ -289,9 +346,12 @@ def getPiecesAval(arr, player):
 
 
 def movePiece(arr, p, newx, newy):
-
+    oldPiece = None
+    if arr[newx][newy] != 0:
+        oldPiece = Piece(newx, newy, arr[newx][newy])
     arr[newx][newy] = p.getP()
     arr[p.getX()][p.getY()] = 0
+    return oldPiece
 
 
 def dispMoves(avalMoves, w):
@@ -577,16 +637,18 @@ def getMoves(arr, piece):
 
     return avalMoves
 
+
 def getSafeMoves(arr, player):
-    piecesAval = getPiecesAval(pieceArr, player)
+    piecesAval = getPiecesAval(arr, player)
     avalMoves = []
 
     for k in piecesAval:
-        avalMovesBeforeCheck = getMoves(pieceArr, k)
+        avalMovesBeforeCheck = getMoves(arr, k)
         for g in avalMovesBeforeCheck:
-            if checkThreat(pieceArr, k, g.getX(), g.getY(), player) != 1:
+            if checkThreat(arr, k, g.getX(), g.getY(), player) != 1:
                 avalMoves.append(Move(k, g.getX(), g.getY()))
     return avalMoves
+
 
 def getSafeMovesPiece(arr, piece, player):
     avalMoves = []
@@ -597,12 +659,14 @@ def getSafeMovesPiece(arr, piece, player):
             avalMoves.append(Move(piece, g.getX(), g.getY()))
     return avalMoves
 
+
 def checkThreat(arr, p, i, j, player):
     oneMoveArr = copy.deepcopy(arr)
     movePiece(oneMoveArr, p, i, j)
 
     check = checkCheck(oneMoveArr, player)
     return check
+
 
 def checkCheck(arr, player):
     avalMoves = []
@@ -799,7 +863,6 @@ def checkCheck(arr, player):
     return 0
 
 
-
 def getColor(arr, i, j):
     piece = arr[i][j]
     if piece == 0:
@@ -820,6 +883,7 @@ def clearBoard():
     for i in pieceObjs:
         i.undraw()
         del i
+
 
 def renderPieces(w, arr):
     for i in range(0, 8):
@@ -867,6 +931,7 @@ def renderPieces(w, arr):
                     newPiece.draw(w)
                     pieceObjs.append(newPiece)
 
+
 def startPos(i, j):
     if j == 1:
         return 7
@@ -899,9 +964,9 @@ def startPos(i, j):
 
     return 0
 
+
 def getPiece(i, j):
     return pieceArr[i][j]
-
 
 
 
@@ -924,6 +989,10 @@ class Piece():
     def getInfo(self):
         return "I am piece: " + str(self.p) + ", located at: " + str(self.x) + ", " + str(self.y)
 
+
+
+
+
 class Move():
     def __init__(self, p, x, y):
         self.p = p
@@ -943,4 +1012,22 @@ class Move():
         return "I am a move: " + str(self.p.getInfo()) + ", moving to: " + str(self.x), ", " + str(self.y)
 
 
-main()
+
+class ValueMove():
+    def __init__(self, m, v):
+        self.m = m
+        self.v = v
+
+    def getMove(self):
+        return self.m
+
+    def getValue(self):
+        return self.v
+
+    def getInfo(self):
+        return "I am a move: " + str(self.p.getInfo()) + ", moving to: " + str(self.x), ", " + str(self.y)
+
+
+
+if __name__ == '__main__':
+    main()
